@@ -4,35 +4,32 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
+import time
+import re
 
-
-#Opcoes do Browser
-chrome_options = webdriver.ChromeOptions()
+chrome_options = webdriver.ChromeOptions() #Opcoes do Browser
 #chrome_options.add_argument('--headless')
 chrome_options.add_argument('--no-sandbox')
 chrome_options.add_argument('--disable-dev-shm-usage')
-
-
-# Abrir o Browser
-driver = webdriver.Chrome(chrome_options=chrome_options)
-
-
-#Link do site
-driver.get("https://web.whatsapp.com/")
+driver = webdriver.Chrome(chrome_options=chrome_options) # Abrir o Browser
+driver.get("https://web.whatsapp.com/") #Link do site
 
 wait = WebDriverWait(driver, 10)
 wait5 = WebDriverWait(driver, 5)
 
+try:
+    input("Escaneie o QR e depois pressione ENTER")
+except:
+    print("Escaneado")
 
-#Esperar escanear QR Code
-input("Escaneie o QR e depois pressione ENTER")
 
 
 MensagensPraMandar = [
-    "Ola $NomeDoCliente$ , obrigado por utilizar. \n Digite: */Licoes* para ver as lições de casa " + Keys.ENTER,
-    
+    "Ola $NomeDoCliente$ , \n Digite: */Licoes* para ver todas as licoes de casa \n Digite: */Provas* para ver todas as provas marcadas \n Digite */AgendarLicao* para agendar uma licao \n Digite */AgendarProva* para agendar uma prova" + Keys.ENTER,
+    "$TodasAsLicoes$",
+    "$TodasAsProvas$",
     ]
-MensagensAtivadoras = ["/iniciar"]
+MensagensAtivadoras = ["/INICIAR","/LICOES","/PROVAS"]
 
 
 def VerificarSeElementoExistePorXPATH(xpath):
@@ -45,7 +42,7 @@ def VerificarSeElementoExistePorXPATH(xpath):
 
 def VerificarMensagens():
     achoutudo = False
-    for i in range(1,32):
+    for i in range(1,200):
         if achoutudo != True:
             msg = '/html/body/div/div/div/div[3]/div/div[2]/div[1]/div/div/div['
             msg += str(i)
@@ -55,7 +52,7 @@ def VerificarMensagens():
                 Mensagem = driver.find_element_by_xpath(msg)
                 MensagemTexto = Mensagem.text
                 for i in range(len(MensagensAtivadoras)):
-                    if(MensagemTexto == MensagensAtivadoras[i]):
+                    if(MensagemTexto.upper() == MensagensAtivadoras[i]):
                         MandarMensagem(i,Mensagem)
             else:
                 achoutudo = True
@@ -74,12 +71,12 @@ def MandarMensagem(index,mensagem):
     #Pegando o dono da mensagem
     DonoDaMensagem = PegarDonoDaMensagem()
     #Esperando um pouco
-    #time.sleep(2)
+
     # Selecionando o input box
     inp_xpath = "//div[@contenteditable='true']"
     input_box = wait.until(EC.presence_of_element_located((
         By.XPATH, inp_xpath)))
-    #time.sleep(1)
+
 
     #Tratando mensagem
     MensagemTratada = TratarMensagem(MensagensPraMandar[index],DonoDaMensagem)
@@ -87,25 +84,39 @@ def MandarMensagem(index,mensagem):
     # Mandando mensagem
     input_box.send_keys( Keys.ENTER + MensagemTratada + Keys.SPACE) # + Keys.ENTER 
     # Reduza o tempo caso for mt grande
-    #time.sleep(6)
+
     input_box.send_keys(Keys.ENTER)
     print("Mandou a mensagem")
-    Voltar = driver.find_element_by_xpath('/html/body/div/div/div/div[3]/div/div[2]/div[1]/div/div/div[1]/div/div/div[2]/div[2]/div[1]/span/span')
-    Voltar.click()
 
+def PegarLicoes():
+    try:
+        Licoes = open('Licoes.csv','r').read()
+        return Licoes
+    except:
+        print("Erro ao abrir CSV Licoes")
+
+def PegarProvas():
+    try:
+        Provas = open('Provas.csv','r').read()
+        return Provas
+    except:
+        print("Erro ao abrir CSV Licoes")
 def TratarMensagem(MensagemASerTratada,DonoDaMensagem):
+    MensagemTratada = MensagemASerTratada
+
+    if MensagemASerTratada == "$TodasAsLicoes$":
+        MensagemTratada = MensagemASerTratada.replace("$TodasAsLicoes$", PegarLicoes())
+        return MensagemTratada
+
+    if MensagemASerTratada == "$TodasAsProvas$":
+        MensagemTratada = MensagemASerTratada.replace("$TodasAsProvas$", PegarProvas())
+        return MensagemTratada
+    
     MensagemTratada = MensagemASerTratada.replace("$NomeDoCliente$", DonoDaMensagem)
+    
     return MensagemTratada
 
 
 while True:
     VerificarMensagens()
-    #time.sleep(100)
-
-
-
-
-
-
-
 
